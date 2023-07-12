@@ -58,7 +58,10 @@ def decrypt_folder_gcm(encrypted_folder_path, password, encryption_level, decryp
             tag = ciphertext[:16]
             ciphertext = ciphertext[16:]
             print("Key length:", len(key))
+            key_length = len(key)
+            key = get_key(password, key_length)
             cipher = AES.new(key, AES.MODE_GCM, nonce=nonce)
+
             try:
                 plaintext = cipher.decrypt_and_verify(ciphertext, tag)
                 plaintext = unpad(plaintext, AES.block_size)
@@ -100,3 +103,15 @@ def decrypt_folder_gcm(encrypted_folder_path, password, encryption_level, decryp
 
     print("Decryption completed with", successful_decryptions, "successful decryptions out of", total_files)
     return decrypted_folder_path, password
+
+def get_key(password, key_length):
+    # hash the password
+    password_hash = SHA256.new(password.encode()).digest()
+
+    # truncate or pad the hash to the desired key length
+    if key_length < len(password_hash):
+        key = password_hash[:key_length]
+    else:
+        key = password_hash.ljust(key_length, b'\0')
+
+    return key

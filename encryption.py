@@ -5,7 +5,6 @@ from Crypto.Util.Padding import pad
 from Crypto.Random import get_random_bytes
 import hashlib
 
-
 def encrypt_folder_gcm(folder_path, password, encryption_level):
     # Generate a 32-byte key based on the user's password
     key = hashlib.sha256(password.encode()).digest()
@@ -75,7 +74,10 @@ def encrypt_folder_gcm(folder_path, password, encryption_level):
 
             # Create the AES cipher object for each file
             nonce = nonce_dict[file]
-            cipher = AES.new(key, AES.MODE_GCM, nonce=nonce)
+            key_length = int(encryption_level) // 8  # convert bits to bytes
+            key = get_key(password, key_length)
+            cipher = AES.new(key, AES.MODE_GCM)
+
 
             ciphertext, tag = cipher.encrypt_and_digest(plaintext)
             encrypted_file_path = os.path.join(encrypted_folder_path, file + ".enc")
@@ -111,3 +113,6 @@ def check_folder_status(folder_path):
         return True
     else:
         return False
+
+def get_key(password, key_length):
+    return hashlib.sha256(password.encode()).digest()[:key_length]

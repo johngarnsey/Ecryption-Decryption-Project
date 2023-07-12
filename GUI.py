@@ -9,8 +9,6 @@ from decryption import decrypt_folder_gcm
 from Crypto.Random import get_random_bytes
 from Crypto.Cipher import AES
 
-
-
 #=======================================================
 # Author: John Garnsey
 # Master's Project: Folder Encryption Application
