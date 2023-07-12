@@ -7,6 +7,8 @@ import sys
 from encryption import encrypt_folder_gcm
 from decryption import decrypt_folder_gcm
 from Crypto.Random import get_random_bytes
+from Crypto.Cipher import AES
+
 
 
 #=======================================================
@@ -36,7 +38,7 @@ def encrypt_or_decrypt_folder():
         if password == encryption_password:
             if decryption_nonces is not None:
                 decrypted_folder_path, encryption_password = decrypt_folder_gcm(
-                    folder_path, password, encryption_level.get(), decryption_nonces
+                    encrypted_folder_path, password, encryption_level.get(), decryption_nonces
                 )
 
                 if decrypted_folder_path:

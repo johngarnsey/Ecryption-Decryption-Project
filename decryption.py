@@ -17,16 +17,25 @@ def decrypt_folder_gcm(encrypted_folder_path, password, encryption_level, decryp
     elif encryption_level == "256":
         key = key[:32]
 
+    print("Key length:", len(key))
+
     decrypted_folder_path = original_folder_path
     os.makedirs(decrypted_folder_path, exist_ok=True)
 
+    print("Encrypted folder path:", encrypted_folder_path)
+
     files = os.listdir(encrypted_folder_path)
+    print("Files to decrypt:", files)
     total_files = len(files)
+    print("Decryption nonces:", decryption_nonces)
 
     for file in files:
         if file.endswith(".enc"):
             file_path = os.path.join(encrypted_folder_path, file)
             decrypted_file_path = os.path.join(decrypted_folder_path, file[:-4])
+
+            print("Decrypting file:", file_path)
+            print("Decrypted file path:", decrypted_file_path)
 
             with open(file_path, "rb") as f:
                 ciphertext = f.read()
@@ -39,12 +48,16 @@ def decrypt_folder_gcm(encrypted_folder_path, password, encryption_level, decryp
                     nonce = value
                     break
 
+            file_without_extension = os.path.splitext(file)[0]
+            nonce = decryption_nonces.get(file_without_extension)
+
             if nonce is None:
                 print("Decryption failed due to missing nonce:", file)
                 continue
 
             tag = ciphertext[:16]
             ciphertext = ciphertext[16:]
+            print("Key length:", len(key))
             cipher = AES.new(key, AES.MODE_GCM, nonce=nonce)
             try:
                 plaintext = cipher.decrypt_and_verify(ciphertext, tag)
@@ -52,18 +65,13 @@ def decrypt_folder_gcm(encrypted_folder_path, password, encryption_level, decryp
                 print("File decrypted:", decrypted_file_path)
                 successful_decryptions += 1
 
-                print("Original ciphertext:", ciphertext)
-                print("Decrypted plaintext:", plaintext)
-                print("Decryption nonce:", nonce)
-
                 with open(decrypted_file_path, "wb") as f:
                     f.write(plaintext)
                     print("Decrypted file written:", decrypted_file_path)
 
-                print("Decrypted folder exists:", os.path.exists(decrypted_folder_path))
-                print("Decrypted file exists:", os.path.exists(decrypted_file_path))
+                    print("Does the decrypted file exist after writing? ", os.path.exists(decrypted_file_path))
 
-                #os.remove(file_path)
+                print("Does the decrypted file exist after closing? ", os.path.exists(decrypted_file_path))
 
             except ValueError:
                 print("Decryption failed for file:", file)
@@ -89,3 +97,6 @@ def decrypt_folder_gcm(encrypted_folder_path, password, encryption_level, decryp
         else:
             print("Decryption failed. Number of decrypted files does not match the original.")
             return None, None
+
+    print("Decryption completed with", successful_decryptions, "successful decryptions out of", total_files)
+    return decrypted_folder_path, password
