@@ -3,6 +3,7 @@ from Crypto.Util.Padding import unpad
 import hashlib
 import os
 import shutil
+from Crypto.Hash import SHA256
 
 def decrypt_folder_gcm(encrypted_folder_path, password, encryption_level, decryption_nonces):
     decrypted_folder_path = None
@@ -59,7 +60,7 @@ def decrypt_folder_gcm(encrypted_folder_path, password, encryption_level, decryp
             ciphertext = ciphertext[16:]
             print("Key length:", len(key))
             key_length = len(key)
-            key = get_key(password, key_length)
+            key = get_key(password, key_length // 8)
             cipher = AES.new(key, AES.MODE_GCM, nonce=nonce)
 
             try:
@@ -105,13 +106,23 @@ def decrypt_folder_gcm(encrypted_folder_path, password, encryption_level, decryp
     return decrypted_folder_path, password
 
 def get_key(password, key_length):
-    # hash the password
+    """
+    Generate a key from the given password and key length.
+    """
+    # The key length for AES must be either 16, 24, or 32 bytes.
+    if key_length not in [128, 192, 256]:
+        raise ValueError("Invalid AES key length: " + str(key_length))
+
+    # Use SHA256 hash to generate a key from the password.
     password_hash = SHA256.new(password.encode()).digest()
 
-    # truncate or pad the hash to the desired key length
-    if key_length < len(password_hash):
-        key = password_hash[:key_length]
-    else:
-        key = password_hash.ljust(key_length, b'\0')
+    # Truncate or pad the password hash to get a valid AES key.
+    if key_length == 128:
+        return password_hash[:16]  # Truncate to 16 bytes (128 bits).
+    elif key_length == 192:
+        return password_hash[:24]  # Truncate to 24 bytes (192 bits).
+    else:  # key_length == 256
+        # Pad to 32 bytes (256 bits).
+        # The padding is done by repeating the hash until it reaches the desired length.
+        return (password_hash * 2)[:32]
 
-    return key
