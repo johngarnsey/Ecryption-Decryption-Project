@@ -3,137 +3,69 @@ import shutil
 from Crypto.Cipher import AES
 from Crypto.Util.Padding import pad
 from Crypto.Random import get_random_bytes
+from Crypto.Protocol.KDF import PBKDF2
 import hashlib
 from Crypto.Hash import SHA256
+import pickle
 
+def get_key(password, key_length, encryption_level):
+    key_length = int(encryption_level)
+    if key_length not in [16, 24, 32]:
+        raise ValueError("Invalid AES key length: " + str(key_length))
+    
+    key_length = key_length // 8 #converting to bytes
+    password_hash = SHA256.new(password.encode()).digest()
+    return password_hash[:key_length]
+
+def encrypt_file_gcm(file_path, password, key_length, encrypted_folder_path):
+    file_name = os.path.basename(file_path)
+    encrypted_file_path = os.path.join(encrypted_folder_path, file_name + ".enc")   
+
+    with open(file_path, 'rb') as file:
+        data = file.read()
+
+    # Password should be bytes
+    password = password.encode('utf-8')
+
+    # Derive a key of the correct length from the password
+    salt = get_random_bytes(16)
+    key = PBKDF2(password, salt, key_length)
+
+    cipher = AES.new(key, AES.MODE_GCM)
+
+    ciphertext, tag = cipher.encrypt_and_digest(data)
+
+    with open(encrypted_file_path, 'wb') as encrypted_file:
+        [ encrypted_file.write(x) for x in (cipher.nonce, tag, ciphertext) ]
+
+    return encrypted_file_path, password, (cipher.nonce, key_length, salt)
 
 def encrypt_folder_gcm(folder_path, password, encryption_level):
-    # Generate a 32-byte key based on the user's password
-    key = hashlib.sha256(password.encode()).digest()
+    if encryption_level not in ["128", "192", "256"]:
+        raise ValueError("Invalid encryption level: " + str(encryption_level))
+    
+    key_length = int(encryption_level) // 8
 
-    # Determine the AES key size based on the encryption level
-    if encryption_level == "128":
-        key = key[:16]
-    elif encryption_level == "192":
-        key = key[:24]
-    elif encryption_level == "256":
-        key = key[:32]
+    encrypted_folder_path = folder_path + ".enc"
+    os.makedirs(encrypted_folder_path, exist_ok=True)
 
-    # Check if the folder is already encrypted
-    if check_folder_status(folder_path):
-        print("Folder is already encrypted. Skipping encryption.")
-        return None, None, None, None
-
-    # Check if the folder is empty
-    if not os.listdir(folder_path):
-        print("Folder is empty. Creating an empty encrypted folder.")
-        encrypted_folder_path = os.path.splitext(folder_path)[0] + ".enc"
-        counter = 1
-
-        # Append a unique number to the folder name if it already exists
-        while os.path.exists(encrypted_folder_path):
-            encrypted_folder_path = os.path.splitext(folder_path)[0] + f"_{counter}.enc"
-            counter += 1
-
-        try:
-            os.makedirs(encrypted_folder_path)
-            print("Folder encrypted:", encrypted_folder_path)
-
-            # Remove the original empty folder
-            remove_original_folder(folder_path)
-
-            return encrypted_folder_path, password, encryption_level, nonce_dict
-        except Exception as e:
-            print("Error creating encrypted folder:", e)
-            return None, None, None, None
-
-    # Create a new folder for the encrypted files
-    encrypted_folder_path = os.path.splitext(folder_path)[0] + ".enc"
-    counter = 1
-
-    # Append a unique number to the folder name if it already exists
-    while os.path.exists(encrypted_folder_path):
-        encrypted_folder_path = os.path.splitext(folder_path)[0] + f"_{counter}.enc"
-        counter += 1
-
-    try:
-        os.makedirs(encrypted_folder_path)
-    except Exception as e:
-        print("Error creating encrypted folder:", e)
-        return None, None, None, None
-
-    nonce_dict = {} #Dictionary to store nonces for each file
-
-    # Read the contents of the folder and encrypt each file
-    encrypted = False  # Flag to track if at least one file is encrypted
+    file_encryption_data = {}
     for root, dirs, files in os.walk(folder_path):
         for file in files:
-            nonce = get_random_bytes(12) #generate a new nonce for each file
-            nonce_dict[file] = nonce #store the nonce
             file_path = os.path.join(root, file)
-            with open(file_path, "rb") as f:
-                plaintext = f.read()
+            encrypted_file_path, encryption_password, nonce_and_key_length_and_salt = encrypt_file_gcm(file_path, password, key_length, encrypted_folder_path)
+            file_encryption_data[encrypted_file_path] = nonce_and_key_length_and_salt
+            
+    print(f"Saving nonce.pkl to: {os.path.join(encrypted_folder_path, 'nonce.pkl')}")
 
-            # Create the AES cipher object for each file
-            nonce = nonce_dict[file]
-            key_length = int(encryption_level)
-            key = get_key(password, key_length // 8)   # convert bits to bytes
-            cipher = AES.new(key, AES.MODE_GCM)
+    with open(os.path.join(encrypted_folder_path, 'nonce.pkl'), 'wb') as nonce_file:
+        pickle.dump(file_encryption_data, nonce_file)
 
-
-            ciphertext, tag = cipher.encrypt_and_digest(plaintext)
-            encrypted_file_path = os.path.join(encrypted_folder_path, file + ".enc")
-            with open(encrypted_file_path, "wb") as f:
-                f.write(cipher.nonce + tag + ciphertext)
-            encrypted = True  # Set the flag to True if at least one file is encrypted
-            print("File encrypted:", file_path)
-            print("Encrypted file path:", encrypted_file_path)
-            print("Password:", password)
-            print("Encryption Level:", encryption_level)
-            print("Key:", key)
-            print("Nonce:", nonce)
-
-    # Remove the original folder after successful encryption
-    if encrypted:
-        remove_original_folder(folder_path)
-        print("Folder encrypted:", encrypted_folder_path)
-        return encrypted_folder_path, password, nonce_dict
-    else:
-        print("No files were encrypted.")
-        # Remove the empty encrypted folder
-        os.rmdir(encrypted_folder_path)
-        return None, None, None, None
+            
+    # Pickle the nonces and key lengths
+    with open(os.path.join(encrypted_folder_path, 'nonce.pkl'), 'wb') as file:
+        pickle.dump(file_encryption_data, file)
+        print(f"Saved file_encryption_data: {file_encryption_data}")
 
 
-def remove_original_folder(folder_path):
-    # Remove the original folder
-    shutil.rmtree(folder_path)
-
-
-def check_folder_status(folder_path):
-    if folder_path.endswith(".enc"):
-        return True
-    else:
-        return False
-
-def get_key(password, key_length):
-    """
-    Generate a key from the given password and key length.
-    """
-    # The key length for AES must be either 16, 24, or 32 bytes.
-    if key_length not in [128, 192, 256]:
-        raise ValueError("Invalid AES key length: " + str(key_length))
-
-    # Use SHA256 hash to generate a key from the password.
-    password_hash = SHA256.new(password.encode()).digest()
-
-    # Truncate or pad the password hash to get a valid AES key.
-    if key_length == 128:
-        return password_hash[:16]  # Truncate to 16 bytes (128 bits).
-    elif key_length == 192:
-        return password_hash[:24]  # Truncate to 24 bytes (192 bits).
-    else:  # key_length == 256
-        # Pad to 32 bytes (256 bits).
-        # The padding is done by repeating the hash until it reaches the desired length.
-        return (password_hash * 2)[:32]
-
+    return encrypted_folder_path, password
