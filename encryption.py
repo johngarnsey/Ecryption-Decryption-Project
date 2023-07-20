@@ -55,7 +55,7 @@ def encrypt_folder_gcm(folder_path, password, encryption_level):
             file_path = os.path.join(root, file)
             encrypted_file_path, encryption_password, nonce_and_key_length_and_salt = encrypt_file_gcm(file_path, password, key_length, encrypted_folder_path)
             file_encryption_data[encrypted_file_path] = nonce_and_key_length_and_salt
-            
+    encryption_successful = True        
     print(f"Saving nonce.pkl to: {os.path.join(encrypted_folder_path, 'nonce.pkl')}")
 
     with open(os.path.join(encrypted_folder_path, 'nonce.pkl'), 'wb') as nonce_file:
@@ -67,5 +67,8 @@ def encrypt_folder_gcm(folder_path, password, encryption_level):
         pickle.dump(file_encryption_data, file)
         print(f"Saved file_encryption_data: {file_encryption_data}")
 
+    # Delete the original unencrypted folder after the encryption is successful
+    if encryption_successful:
+        shutil.rmtree(folder_path)
 
     return encrypted_folder_path, password
