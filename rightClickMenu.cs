@@ -23,7 +23,6 @@ namespace FolderEncryptionShellExtension
             string extensionGuid = "{12345}"; // Unique GUID for the shell extension
             
             // Create registry keys for the shell extension
-            //TO DO: MAKE THE CLICK GRAB THE PATH?
             using (RegistryKey key = Registry.ClassesRoot.CreateSubKey(@"Folder\shell\EncryptFolder"))
             {
                 key.SetValue("", "Encrypt Folder");

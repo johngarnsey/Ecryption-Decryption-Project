@@ -1,10 +1,11 @@
 # Enable script execution
 Set-ExecutionPolicy RemoteSigned -Scope CurrentUser -Force
 
+#These paths will be unique for every user. User must provide their local python installation and the location where GUI.py is
 $targetPath = "C:\Users\johng\AppData\Local\Microsoft\WindowsApps\python3.11.exe"
 $scriptPath = "C:\Users\johng\Documents\M.S. PROJECT\GUI.py"
 
-$command = """$targetPath"" ""$scriptPath"" ""%1"""
+#$command = """$targetPath"" ""$scriptPath"" ""%1"""
 $commandKey = "EncryptDecryptCommand"
 $commandValue = "Encrypt/Decrypt"
 
