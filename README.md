@@ -1,17 +1,17 @@
 # Folder Encryption and Decryption Application
 
 ## Overview
-This project is a comprehensive file encryption and decryption application developed as part of a master's program in cybersecurity. The application utilizes the GCM (Galois/Counter Mode) algorithm for secure encryption and decryption of files and folders. The project employs Python and Tkinter for GUI development, providing a user-friendly interface for managing encrypted data.
+This project is a comprehensive file encryption and decryption application developed as part of a master's program in cybersecurity. The application utilizes the AES (Advanced Encryption Standard) algorithm in GCM (Galois/Counter Mode) for secure encryption and decryption of files and folders. The project employs Python and Tkinter for GUI development, providing a user-friendly interface for managing encrypted data.
 
 ## Technologies Used
 - **Python**: Primary language for encryption/decryption functionalities.
 - **Tkinter**: Library for creating GUI applications.
-- **GCM**: Authenticated encryption algorithm.
+- **AES (Advanced Encryption Standard)**: Encryption algorithm used in GCM mode.
 
 ## Features
 
 ### Encryption:
-- Implemented file encryption using GCM.
+- Implemented file encryption using AES-GCM.
 - Secure key generation based on user-provided passwords.
 - Encrypted files stored in specified output folders.
 - User feedback during the encryption process.
